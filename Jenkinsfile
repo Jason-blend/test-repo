@@ -1,3 +1,4 @@
+/*
 pipeline {
     agent any
 
@@ -41,6 +42,21 @@ pipeline {
                         bat 'python hello-world.py'
                     }
                 }
+            }
+        }
+    }
+}
+*/
+
+pipeline {
+    agent any
+    stages {
+        stage('Run Python') {
+            agent {
+                docker { image 'python:3.12' }
+            }
+            steps {
+                sh 'python3 hello-world.py'
             }
         }
     }
