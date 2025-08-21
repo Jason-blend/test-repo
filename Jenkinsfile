@@ -3,9 +3,8 @@ pipeline {
     stages {
         stage('Run Python') {
             agent {
-                docker {
-                    image 'python:3.12'
-                    args '-u'   // optional: makes output unbuffered
+                dockerContainer('python:3.12') {
+                    args '-u'
                 }
             }
             steps {
