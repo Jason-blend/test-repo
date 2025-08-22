@@ -16,6 +16,8 @@ COPY . .
 # This assumes only one Python file in repo contains 'Flask(__name__)', adjust if needed
 RUN PY_FILE=$(grep -l "Flask(__name__)" *.py) && echo "Running $PY_FILE" > /dev/null
 
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+
 # --- Step 6: Expose Flask port ---
 EXPOSE 5000
 
