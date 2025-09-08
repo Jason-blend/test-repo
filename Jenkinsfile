@@ -34,19 +34,25 @@ pipeline {
                 '''
             }
             post {
-                always {
-                    publishHTML([
-                        reportDir: "${REPORT_DIR}",
-                        reportFiles: "bandit-report.html",
-                        reportName: "Bandit Security Report"
-                    ])
-                    publishHTML([
-                        reportDir: "${REPORT_DIR}/flake8-report",
-                        reportFiles: "index.html",
-                        reportName: "Flake8 Lint Report"
-                    ])
-                }
-            }
+    always {
+        publishHTML([
+            allowMissing: true,
+            alwaysLinkToLastBuild: true,
+            keepAll: true,
+            reportDir: "${REPORT_DIR}",
+            reportFiles: "bandit-report.html",
+            reportName: "Bandit Security Report"
+        ])
+        publishHTML([
+            allowMissing: true,
+            alwaysLinkToLastBuild: true,
+            keepAll: true,
+            reportDir: "${REPORT_DIR}/flake8-report",
+            reportFiles: "index.html",
+            reportName: "Flake8 Lint Report"
+        ])
+    }
+}
         }
 
         stage('Unit Tests') {
@@ -77,15 +83,18 @@ pipeline {
                 trivy image --format json -o trivy-reports/trivy-report.json ${IMAGE_NAME} || true
                 '''
             }
-            post {
-                always {
-                    publishHTML([
-                        reportDir: "trivy-reports",
-                        reportFiles: "trivy-report.html",
-                        reportName: "Trivy Vulnerability Report"
-                    ])
-                }
-            }
+       post {
+    always {
+        publishHTML([
+            allowMissing: true,
+            alwaysLinkToLastBuild: true,
+            keepAll: true,
+            reportDir: "trivy-reports",
+            reportFiles: "trivy-report.html",
+            reportName: "Trivy Vulnerability Report"
+        ])
+    }
+}
         }
 
         stage('Deploy Container') {
