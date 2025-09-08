@@ -1,9 +1,19 @@
 pipeline {
     agent any
+    environment {
+        GIT_TOKEN = credentials('github-pat') // We’ll configure this later
+    }
     stages {
-        stage('Run Python') {
+        stage('Checkout') {
             steps {
-                sh 'python3 hello-world.py || echo "Python3 not found"'
+                git branch: 'main', url: 'https://github.com/Jason-blend/test-repo.git'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build("my-flask-app")
+                }
             }
         }
     }
