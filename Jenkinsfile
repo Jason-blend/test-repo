@@ -23,6 +23,19 @@ pipeline {
                 '''
             }
         }
+  
+  
+    stages {
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    def myImage = docker.build("my-image:${env.BUILD_NUMBER}")
+                    echo "Docker image built: ${myImage.id}"
+                }
+            }
+        }
+    }
+
 
         stage('Static Analysis - Bandit & Flake8') {
             steps {
