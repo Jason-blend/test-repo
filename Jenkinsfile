@@ -1,34 +1,37 @@
 pipeline {
     agent any
     environment {
-        GIT_TOKEN = credentials('github-pat') // Jenkins credential ID for GitHub PAT
-        IMAGE_NAME = "my-flask-app"
+        GIT_TOKEN = credentials('github-pat') // GitHub PAT from Jenkins credentials
     }
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: "https://github.com/Jason-blend/test-repo.git"
+                git branch: 'jenkins-auto-upgrade', 
+                    url: 'https://github.com/Jason-blend/test-repo.git',
+                    credentialsId: 'github-pat'
             }
         }
 
-   stage('Setup Python') {
-    steps {
-        sh '''
-            pip3 install --user --upgrade pip setuptools wheel
-            pip3 install --user -r requirements.txt
-        '''
-    }
-}
-
-
+        stage('Setup Python') {
+            steps {
+                // Use bash explicitly to handle virtual environment
+                sh '''
+                    #!/bin/bash
+                    python3 -m venv venv
+                    source venv/bin/activate
+                    pip install --upgrade pip setuptools wheel
+                    pip install -r requirements.txt
+                '''
+            }
+        }
 
         stage('Static Analysis - Bandit & Flake8') {
             steps {
                 sh '''
-                    . venv/bin/activate
+                    source venv/bin/activate
                     pip install bandit flake8
-                    bandit -r . -f html -o bandit-report.html || true
-                    flake8 . --exit-zero --format=html --htmldir=flake8-report || true
+                    bandit -r .
+                    flake8 .
                 '''
             }
         }
@@ -36,9 +39,9 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 sh '''
-                    . venv/bin/activate
-                    pip install pytest pytest-html
-                    pytest --maxfail=1 --disable-warnings -q --html=pytest-report.html || true
+                    source venv/bin/activate
+                    pip install pytest
+                    pytest -v --maxfail=1 --disable-warnings
                 '''
             }
         }
@@ -46,7 +49,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${IMAGE_NAME}")
+                    docker.build("my-flask-app:${env.BUILD_NUMBER}")
                 }
             }
         }
@@ -54,9 +57,7 @@ pipeline {
         stage('Trivy Scan') {
             steps {
                 sh '''
-                    mkdir -p trivy-reports
-                    trivy image --format json -o trivy-reports/trivy-report.json ${IMAGE_NAME} || true
-                    trivy image --format template --template "@/root/contrib/html.tpl" -o trivy-reports/trivy-report.html ${IMAGE_NAME} || true
+                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --exit-code 1 --severity HIGH,CRITICAL my-flask-app:${BUILD_NUMBER}
                 '''
             }
         }
@@ -64,37 +65,24 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 sh '''
-                    docker run -d -p 5000:5000 --name my-flask-job ${IMAGE_NAME} || true
+                    docker stop flask-app || true
+                    docker rm flask-app || true
+                    docker run -d -p 5000:5000 --name flask-app my-flask-app:${BUILD_NUMBER}
                 '''
             }
         }
     }
+
     post {
         always {
-            publishHTML([
-                reportName : 'Bandit Report',
-                reportDir  : '.',
-                reportFiles: 'bandit-report.html',
-                keepAll: true, alwaysLinkToLastBuild: true, allowMissing: true
-            ])
-            publishHTML([
-                reportName : 'Flake8 Report',
-                reportDir  : 'flake8-report',
-                reportFiles: 'index.html',
-                keepAll: true, alwaysLinkToLastBuild: true, allowMissing: true
-            ])
-            publishHTML([
-                reportName : 'Pytest Report',
-                reportDir  : '.',
-                reportFiles: 'pytest-report.html',
-                keepAll: true, alwaysLinkToLastBuild: true, allowMissing: true
-            ])
-            publishHTML([
-                reportName : 'Trivy Vulnerability Report',
-                reportDir  : 'trivy-reports',
-                reportFiles: 'trivy-report.html',
-                keepAll: true, alwaysLinkToLastBuild: true, allowMissing: true
-            ])
+            echo "Cleaning up..."
+            sh 'docker system prune -f'
+        }
+        success {
+            echo "Pipeline completed successfully!"
+        }
+        failure {
+            echo "Pipeline failed."
         }
     }
 }
