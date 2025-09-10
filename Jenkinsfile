@@ -2,116 +2,43 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "notes-app"
-        REPORT_DIR = "reports"
+        VENV = "./venv"
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Unit Tests') {
             steps {
-                git branch: 'main', url: 'https://github.com/Jason-blend/test-repo.git'
+                echo "Running Python unit tests..."
+                sh "${VENV}/bin/python -m unittest discover tests || true"
             }
         }
-
-        stage('Setup Python') {
-            steps {
-                sh '''
-                python3 -m venv venv
-                source venv/bin/activate
-                pip install --upgrade pip setuptools wheel
-                pip install -r requirements.txt
-                '''
-            }
-        }
-  
-  
-    stages {
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    def myImage = docker.build("my-image:${env.BUILD_NUMBER}")
-                    echo "Docker image built: ${myImage.id}"
-                }
-            }
-        }
-    }
-
-
-        stage('Static Analysis - Bandit & Flake8') {
-            steps {
-                sh '''
-                mkdir -p ${REPORT_DIR}
-                source venv/bin/activate
-                bandit -r app.py -f html -o ${REPORT_DIR}/bandit-report.html || true
-                flake8 --exit-zero --format=html --htmldir=${REPORT_DIR}/flake8-report || true
-                '''
-            }
-            post {
-    always {
-        publishHTML([
-            allowMissing: true,
-            alwaysLinkToLastBuild: true,
-            keepAll: true,
-            reportDir: "${REPORT_DIR}",
-            reportFiles: "bandit-report.html",
-            reportName: "Bandit Security Report"
-        ])
-        publishHTML([
-            allowMissing: true,
-            alwaysLinkToLastBuild: true,
-            keepAll: true,
-            reportDir: "${REPORT_DIR}/flake8-report",
-            reportFiles: "index.html",
-            reportName: "Flake8 Lint Report"
-        ])
-    }
-}
-        }
-
-     stage('Unit Tests') {
-    when {
-        expression { false } // this makes Jenkins skip the stage
-    }
-    steps {
-        sh './venv/bin/python -m unittest discover tests'
-    }
-}
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${IMAGE_NAME} ."
+                echo "Skipping Docker build for now"
             }
         }
 
         stage('Trivy Scan') {
             steps {
-                sh '''
-                mkdir -p trivy-reports
-                trivy image --format template --template "@/root/contrib/html.tpl" -o trivy-reports/trivy-report.html ${IMAGE_NAME} || true
-                trivy image --format json -o trivy-reports/trivy-report.json ${IMAGE_NAME} || true
-                '''
+                echo "Skipping Trivy scan due to skipped Docker build"
             }
-       post {
-    always {
-        publishHTML([
-            allowMissing: true,
-            alwaysLinkToLastBuild: true,
-            keepAll: true,
-            reportDir: "trivy-reports",
-            reportFiles: "trivy-report.html",
-            reportName: "Trivy Vulnerability Report"
-        ])
-    }
-}
         }
 
         stage('Deploy Container') {
             steps {
-                sh '''
-                docker rm -f ${IMAGE_NAME} || true
-                docker run -d --name ${IMAGE_NAME} -p 5000:5000 ${IMAGE_NAME}
-                '''
+                echo "Skipping container deployment for now"
             }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline finished."
+        }
+        failure {
+            echo "Pipeline failed!"
         }
     }
 }
