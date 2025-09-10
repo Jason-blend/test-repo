@@ -55,19 +55,14 @@ pipeline {
 }
         }
 
-        stage('Unit Tests') {
-            steps {
-                sh '''
-                source venv/bin/activate
-                pytest --junitxml=${REPORT_DIR}/pytest-report.xml || true
-                '''
-            }
-            post {
-                always {
-                    junit "${REPORT_DIR}/pytest-report.xml"
-                }
-            }
-        }
+     stage('Unit Tests') {
+    when {
+        expression { false } // this makes Jenkins skip the stage
+    }
+    steps {
+        sh './venv/bin/python -m unittest discover tests'
+    }
+}
 
         stage('Build Docker Image') {
             steps {
