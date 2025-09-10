@@ -11,15 +11,15 @@ pipeline {
             }
         }
 
-    stage('Setup Python') {
+   stage('Setup Python') {
     steps {
         sh '''
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install --upgrade pip setuptools wheel
+            pip3 install --user --upgrade pip setuptools wheel
+            pip3 install --user -r requirements.txt
         '''
     }
 }
+
 
 
         stage('Static Analysis - Bandit & Flake8') {
