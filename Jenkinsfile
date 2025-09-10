@@ -13,17 +13,16 @@ pipeline {
         }
 
         stage('Setup Python') {
-            steps {
-                // Use bash explicitly to handle virtual environment
-                sh '''
-                    #!/bin/bash
-                    python3 -m venv venv
-                    source venv/bin/activate
-                    pip install --upgrade pip setuptools wheel
-                    pip install -r requirements.txt
-                '''
-            }
-        }
+    steps {
+        sh '''
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install --upgrade pip setuptools wheel
+            pip install -r requirements.txt
+        '''
+    }
+}
+
 
         stage('Static Analysis - Bandit & Flake8') {
             steps {
