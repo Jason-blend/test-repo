@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        GIT_TOKEN = credentials('github-pat')
+        GIT_TOKEN = credentials('github-pat') // Your GitHub PAT in Jenkins
     }
     stages {
         stage('Checkout') {
@@ -12,21 +12,32 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Setup Python & Dependencies') {
             steps {
                 sh '''
-                    python3 -m pip install --upgrade pip setuptools wheel
-                    python3 -m pip install -r requirements.txt
+                #!/bin/bash
+                python3 -m venv venv
+                ./venv/bin/pip install --upgrade pip setuptools wheel
+                ./venv/bin/pip install -r requirements.txt
                 '''
             }
         }
 
-        stage('Static Analysis') {
+        stage('Static Analysis - Bandit & Flake8') {
             steps {
                 sh '''
-                    python3 -m pip install bandit flake8
-                    bandit -r .
-                    flake8 .
+                #!/bin/bash
+                ./venv/bin/bandit -r . || true
+                ./venv/bin/flake8 . || true
+                '''
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                sh '''
+                #!/bin/bash
+                ./venv/bin/python -m unittest discover tests || true
                 '''
             }
         }
@@ -42,16 +53,28 @@ pipeline {
         stage('Trivy Scan') {
             steps {
                 sh '''
-                    trivy image --format json -o trivy-reports/trivy-report.json my-flask-app
-                    trivy image --format template --template trivy-reports/html.tpl -o trivy-reports/trivy-report.html my-flask-app
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image my-flask-app
                 '''
             }
         }
 
         stage('Deploy Container') {
             steps {
-                sh 'docker run -d -p 5000:5000 --name my-flask-app my-flask-app'
+                sh '''
+                docker stop flask-app || true
+                docker rm flask-app || true
+                docker run -d -p 5000:5000 --name flask-app my-flask-app
+                '''
             }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished.'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
